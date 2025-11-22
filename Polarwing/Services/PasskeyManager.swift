@@ -14,7 +14,25 @@ class PasskeyManager: NSObject, ObservableObject {
     @Published var isAuthenticated = false
     @Published var currentCredentialID: String?
     
-    private let rpID = "api-polarwing.ngrok.app"
+    // NOTE: Passkey (WebAuthn) requires a valid Associated Domains configuration.
+    // The RP ID (relyingPartyIdentifier) must match an HTTPS domain whose
+    // AASA file (`/.well-known/apple-app-site-association`) is reachable,
+    // returns 200 with `application/json`, and contains this app’s AppID
+    // (TEAM_ID.BUNDLE_ID) under `webcredentials.apps`.
+    //
+    // If the domain/AASA file changes, iOS may still use a cached association
+    // from a previous build. This leads to errors such as:
+    // “Unable to verify webcredentials association” or AuthorizationError 1004.
+    //
+    // FIX:
+    // 1. Update the AASA file (no redirects, correct JSON).
+    // 2. Ensure `webcredentials:<domain>` exists in the app entitlements.
+    // 3. **Delete the app from the device** so iOS refreshes the domain association.
+    // 4. **Clean the Xcode build folder** and rebuild before reinstalling.
+    //
+    // Without reinstalling the app, the device may continue using stale
+    // associated-domain metadata and fail passkey registration.
+    private let rpID = "api2-polarwing.ngrok.app"
     private let userID = "new user"
     
     private override init() {
