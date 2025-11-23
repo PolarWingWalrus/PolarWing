@@ -14,9 +14,8 @@ struct ProfileView: View {
     @State private var profileData: ProfileResponse?
     @State private var isLoading = false
     @State private var avatarImage: UIImage?
-    
-    // 模拟当前用户的帖子（实际应该从数据源筛选）
-    let currentUserId = "user1"
+    @State private var userPosts: [Post] = []
+    @State private var isLoadingPosts = false
     
     var username: String {
         profileData?.nickname ?? UserDefaults.standard.string(forKey: "username") ?? "用户"
@@ -31,8 +30,8 @@ struct ProfileView: View {
         return url
     }
     
-    var userPosts: [Post] {
-        MockData.posts.filter { $0.userId == currentUserId }
+    var currentUserAddress: String {
+        UserDefaults.standard.string(forKey: "suiAddress") ?? ""
     }
     
     var body: some View {
@@ -107,7 +106,16 @@ struct ProfileView: View {
                 Divider()
                 
                 // 用户的帖子网格
-                if userPosts.isEmpty {
+                if isLoadingPosts {
+                    VStack {
+                        ProgressView()
+                            .padding()
+                        Text("加载帖子中...")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if userPosts.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.system(size: 60))
@@ -125,11 +133,14 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: loadProfile) {
+                    Button(action: {
+                        loadProfile()
+                        loadUserPosts()
+                    }) {
                         Image(systemName: "arrow.clockwise")
                             .foregroundColor(Color(red: 172/255, green: 237/255, blue: 228/255))
                     }
-                    .disabled(isLoading)
+                    .disabled(isLoading || isLoadingPosts)
                 }
             }
             .overlay {
@@ -145,6 +156,7 @@ struct ProfileView: View {
             }
             .onAppear {
                 loadProfile()
+                loadUserPosts()
             }
         }
     }
@@ -190,6 +202,65 @@ struct ProfileView: View {
                 }
             } catch {
                 print("❌ 加载头像失败: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func loadUserPosts() {
+        guard let suiAddress = UserDefaults.standard.string(forKey: "suiAddress") else {
+            print("⚠️ 未找到 Sui 地址")
+            return
+        }
+        
+        isLoadingPosts = true
+        
+        Task {
+            do {
+                // 获取用户的帖子列表
+                let postsPage = try await APIService.shared.getPosts(
+                    scope: "all",
+                    page: 1,
+                    pageSize: 50,
+                    includeContent: false,
+                    suiAddress: suiAddress
+                )
+                
+                // 过滤出当前用户的帖子
+                var myPosts = postsPage.posts.filter { $0.author == suiAddress }
+                
+                // 对于每个帖子，如果需要获取内容则请求详细信息
+                for i in 0..<myPosts.count {
+                    // 如果帖子没有 contentTitle（Walrus 存储），则需要获取详细内容
+                    if myPosts[i].storageType == "walrus" && myPosts[i].contentTitle == nil {
+                        do {
+                            let content = try await APIService.shared.getPostContent(
+                                postId: myPosts[i].id,
+                                suiAddress: suiAddress
+                            )
+                            
+                            // 更新帖子内容
+                            myPosts[i].title = content.title
+                            myPosts[i].content = content.content
+                            myPosts[i].mediaUrls = content.mediaUrls
+                            
+                            print("✅ 获取帖子 \(myPosts[i].id) 的内容: \(content.title)")
+                        } catch {
+                            print("⚠️ 获取帖子 \(myPosts[i].id) 内容失败: \(error.localizedDescription)")
+                            // 继续处理其他帖子
+                        }
+                    }
+                }
+                
+                await MainActor.run {
+                    self.userPosts = myPosts
+                    self.isLoadingPosts = false
+                    print("✅ 成功加载 \(myPosts.count) 个帖子")
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoadingPosts = false
+                    print("❌ 加载帖子失败: \(error.localizedDescription)")
+                }
             }
         }
     }

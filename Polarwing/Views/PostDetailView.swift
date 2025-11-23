@@ -9,15 +9,42 @@ import SwiftUI
 
 struct PostDetailView: View {
     let post: Post
+    @State private var postImage: UIImage?
+    @State private var isLoadingImage = false
+    
+    var displayTitle: String {
+        post.title ?? post.contentTitle ?? "无标题"
+    }
+    
+    var displayContent: String {
+        post.content ?? post.contentText ?? ""
+    }
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Image(systemName: post.imageUrl)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity)
-                    .foregroundColor(.gray.opacity(0.3))
+                // 帖子图片
+                if let image = postImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                } else if isLoadingImage {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 300)
+                        .overlay(
+                            ProgressView()
+                        )
+                } else {
+                    Image(systemName: "photo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 300)
+                        .foregroundColor(.gray.opacity(0.3))
+                }
                 
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -39,13 +66,15 @@ struct PostDetailView: View {
                         Spacer()
                     }
                     
-                    Text(post.title)
+                    Text(displayTitle)
                         .font(.title3)
                         .fontWeight(.bold)
                     
-                    Text(post.content)
-                        .font(.body)
-                        .foregroundColor(.primary)
+                    if !displayContent.isEmpty {
+                        Text(displayContent)
+                            .font(.body)
+                            .foregroundColor(.primary)
+                    }
                     
                     HStack(spacing: 24) {
                         HStack(spacing: 6) {
@@ -70,9 +99,53 @@ struct PostDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            loadPostImage()
+        }
     }
     
-    private func timeAgoString(from date: Date) -> String {
+    private func loadPostImage() {
+        // 获取图片 URL
+        let mediaUrls = post.mediaUrls ?? post.contentMediaUrls
+        guard let urlString = mediaUrls?.first,
+              let url = URL(string: urlString) else {
+            return
+        }
+        
+        // 只加载远程图片
+        if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
+            isLoadingImage = true
+            
+            Task {
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    if let image = UIImage(data: data) {
+                        await MainActor.run {
+                            self.postImage = image
+                            self.isLoadingImage = false
+                        }
+                    } else {
+                        await MainActor.run {
+                            self.isLoadingImage = false
+                        }
+                    }
+                } catch {
+                    print("❌ 加载图片失败 (\(urlString)): \(error.localizedDescription)")
+                    await MainActor.run {
+                        self.isLoadingImage = false
+                    }
+                }
+            }
+        }
+    }
+    
+    private func timeAgoString(from dateString: String) -> String {
+        // 解析 ISO 8601 日期字符串
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: dateString) else {
+            return dateString
+        }
+        
         let seconds = Date().timeIntervalSince(date)
         
         if seconds < 60 {

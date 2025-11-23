@@ -515,5 +515,172 @@ class APIService {
         }
     }
     
-    // TODO: Add more API endpoints here
+    // MARK: - Get Posts API
+    func getPosts(
+        scope: String = "all",
+        page: Int = 1,
+        pageSize: Int = 20,
+        includeContent: Bool = false,
+        suiAddress: String
+    ) async throws -> PostsPageResponse {
+        var components = URLComponents(string: "\(baseURL)/posts")!
+        components.queryItems = [
+            URLQueryItem(name: "scope", value: scope),
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "page_size", value: "\(pageSize)"),
+            URLQueryItem(name: "include_content", value: "\(includeContent)")
+        ]
+        
+        guard let url = components.url else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        // Headers
+        request.setValue("application/json", forHTTPHeaderField: "accept")
+        request.setValue(suiAddress, forHTTPHeaderField: "X-Sui-Address")
+        
+        print("📤 获取帖子列表: \(url.absoluteString)")
+        print("📋 请求头:")
+        request.allHTTPHeaderFields?.forEach { key, value in
+            print("  \(key): \(value)")
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+        
+        print("📥 收到响应 - 状态码: \(httpResponse.statusCode)")
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📦 响应体: \(responseString)")
+        } else {
+            print("📦 响应体: (无法解析为字符串, \(data.count) 字节)")
+        }
+        
+        switch httpResponse.statusCode {
+        case 200:
+            let decoder = JSONDecoder()
+            let postsPage = try decoder.decode(PostsPageResponse.self, from: data)
+            print("✅ 成功获取帖子列表: \(postsPage.posts.count) 个帖子")
+            return postsPage
+            
+        case 400, 401, 500:
+            let decoder = JSONDecoder()
+            let apiError = try decoder.decode(APIError.self, from: data)
+            print("❌ API 错误: \(apiError)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey: apiError.message,
+                    "code": apiError.code.rawValue,
+                    "details": apiError.details ?? ""
+                ]
+            )
+            
+        default:
+            print("⚠️ 未预期的状态码: \(httpResponse.statusCode)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Unexpected status code: \(httpResponse.statusCode)"]
+            )
+        }
+    }
+    
+    // MARK: - Get Post Content API
+    func getPostContent(
+        postId: String,
+        suiAddress: String
+    ) async throws -> PostContentResponse {
+        let url = URL(string: "\(baseURL)/posts/\(postId)/content")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        // Headers
+        request.setValue("application/json", forHTTPHeaderField: "accept")
+        request.setValue(suiAddress, forHTTPHeaderField: "X-Sui-Address")
+        
+        print("📤 获取帖子内容: \(url.absoluteString)")
+        print("📋 请求头:")
+        request.allHTTPHeaderFields?.forEach { key, value in
+            print("  \(key): \(value)")
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+        
+        print("📥 收到响应 - 状态码: \(httpResponse.statusCode)")
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📦 响应体: \(responseString)")
+        } else {
+            print("📦 响应体: (无法解析为字符串, \(data.count) 字节)")
+        }
+        
+        switch httpResponse.statusCode {
+        case 200:
+            let decoder = JSONDecoder()
+            let postContent = try decoder.decode(PostContentResponse.self, from: data)
+            print("✅ 成功获取帖子内容: \(postContent.title)")
+            return postContent
+            
+        case 400, 401, 403, 404, 500:
+            let decoder = JSONDecoder()
+            let apiError = try decoder.decode(APIError.self, from: data)
+            print("❌ API 错误: \(apiError)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey: apiError.message,
+                    "code": apiError.code.rawValue,
+                    "details": apiError.details ?? ""
+                ]
+            )
+            
+        default:
+            print("⚠️ 未预期的状态码: \(httpResponse.statusCode)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Unexpected status code: \(httpResponse.statusCode)"]
+            )
+        }
+    }
+}
+
+// MARK: - Posts Page Response
+struct PostsPageResponse: Codable {
+    let posts: [Post]
+    let total: Int
+    let page: Int
+    let pageSize: Int
+    let hasMore: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case posts, total, page
+        case pageSize = "page_size"
+        case hasMore = "has_more"
+    }
+}
+
+// MARK: - Post Content Response
+struct PostContentResponse: Codable {
+    let title: String
+    let content: String
+    let mediaUrls: [String]
+    
+    enum CodingKeys: String, CodingKey {
+        case title, content
+        case mediaUrls = "media_urls"
+    }
 }

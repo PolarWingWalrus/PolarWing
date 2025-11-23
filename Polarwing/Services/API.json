@@ -1,0 +1,1760 @@
+{
+    "schemes": ["http","https"],
+    "swagger": "2.0",
+    "info": {
+        "description": "API for creating, querying and retrieving Walrus-backed posts secured by zkLogin signatures.",
+        "title": "Polarwing Backend API",
+        "contact": {
+            "name": "Walrus Team",
+            "url": "https://github.com/walrus-labs",
+            "email": "dev@walruslabs.com"
+        },
+        "version": "1.0"
+    },
+    "host": "api-polarwing.ngrok.app",
+    "basePath": "/api/v1",
+    "paths": {
+        "/comments/{id}/content": {
+            "get": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Retrieves Walrus-backed comment payload with encryption metadata.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Interactions"
+                ],
+                "summary": "Get comment content",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/interaction.CommentContent"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media/upload": {
+            "post": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Uploads media files to local storage or Walrus based on storage_type parameter",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Media"
+                ],
+                "summary": "Upload media files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Storage type (db or walrus)",
+                        "name": "storage_type",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Media files to upload (max 12 files, 50MB each)",
+                        "name": "files",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/upload.UploadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts": {
+            "get": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Returns paginated posts filtered by scope, tags, and pagination settings.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Query posts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "default": "all",
+                        "description": "Scope for the query: empty or 'all' for global feed, 'own' for requester only, or any address for that user's posts",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma separated tags to match",
+                        "name": "tags",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size (1-100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Include content",
+                        "name": "include_content",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/post.PostPage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Stores content (DB or Walrus-backed) and metadata for the authenticated Sui address.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Create a post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Post payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/post.CreatePostRequestBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/post.Post"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{id}/comments": {
+            "get": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Returns paginated comments viewable by the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Interactions"
+                ],
+                "summary": "List comments for a post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Post ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Include content",
+                        "name": "include_content",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/interaction.CommentPage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Stores a Walrus-backed comment for the target post.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Interactions"
+                ],
+                "summary": "Create a comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Post ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment content",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/interaction.CommentPostRequestBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/interaction.Comment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{id}/content": {
+            "get": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Retrieves post content from storage (DB or Walrus); encrypted payloads are returned with metadata for decryption.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Get post content",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Post ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/post.PostContent"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{id}/like": {
+            "post": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Adds a like on behalf of the authenticated Sui address.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Interactions"
+                ],
+                "summary": "Like a post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Post ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/interaction.LikeCountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Removes the authenticated user's like from a post.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Interactions"
+                ],
+                "summary": "Remove a like",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Post ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/interaction.LikeCountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/me": {
+            "get": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Returns the profile (nickname, bio, avatar URL) for the authenticated Sui address.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Get authenticated user's profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/profile.Profile"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Creates or updates the profile for the authenticated Sui address.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Update authenticated user's profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Profile update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/profile.UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/profile.Profile"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/{address}": {
+            "get": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Returns the profile for the specified Sui address.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Get profile by address",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Target Sui address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/profile.Profile"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seal/keys": {
+            "post": {
+                "security": [
+                    {
+                        "AuthSignature": []
+                    }
+                ],
+                "description": "Requests a decryption key for a specific policy.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SEAL"
+                ],
+                "summary": "Request decryption key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sui address",
+                        "name": "X-Sui-Address",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Public key",
+                        "name": "X-Sui-Public-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Signature",
+                        "name": "X-Sui-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action",
+                        "name": "X-Sui-Action",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timestamp",
+                        "name": "X-Sui-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nonce",
+                        "name": "X-Sui-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Key request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/seal.DecryptionKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/seal.DecryptionKey"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/middleware.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "interaction.Comment": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "blob_id": {
+                    "type": "string"
+                },
+                "content_text": {
+                    "description": "DB storage for comment content (when storage_type = 'db')",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "post_id": {
+                    "type": "string"
+                },
+                "storage_type": {
+                    "description": "Storage configuration: 'db' or 'walrus'",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/post.StorageType"
+                        }
+                    ]
+                },
+                "tx_digest": {
+                    "type": "string"
+                }
+            }
+        },
+        "interaction.CommentContent": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "interaction.CommentPage": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/interaction.Comment"
+                    }
+                },
+                "has_more": {
+                    "type": "boolean"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "interaction.CommentPostRequestBody": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "$ref": "#/definitions/interaction.CommentContent"
+                },
+                "storage_type": {
+                    "enum": [
+                        "walrus",
+                        "db"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/post.StorageType"
+                        }
+                    ],
+                    "example": "walrus"
+                }
+            }
+        },
+        "interaction.LikeCountResponse": {
+            "type": "object",
+            "properties": {
+                "like_count": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "middleware.ErrorCode": {
+            "type": "string",
+            "enum": [
+                "INVALID_SIGNATURE",
+                "UNAUTHORIZED",
+                "ACCESS_DENIED",
+                "FORBIDDEN",
+                "POST_NOT_FOUND",
+                "COMMENT_NOT_FOUND",
+                "RESOURCE_NOT_FOUND",
+                "INVALID_REQUEST",
+                "MISSING_PARAMETER",
+                "INVALID_PARAMETER",
+                "CONFLICT",
+                "ALREADY_LIKED",
+                "NOT_LIKED",
+                "STORAGE_FAILURE",
+                "TRANSACTION_FAILED",
+                "SERVICE_UNAVAILABLE",
+                "INTERNAL_ERROR",
+                "DATABASE_ERROR"
+            ],
+            "x-enum-varnames": [
+                "ErrCodeInvalidSignature",
+                "ErrCodeUnauthorized",
+                "ErrCodeAccessDenied",
+                "ErrCodeForbidden",
+                "ErrCodePostNotFound",
+                "ErrCodeCommentNotFound",
+                "ErrCodeResourceNotFound",
+                "ErrCodeInvalidRequest",
+                "ErrCodeMissingParameter",
+                "ErrCodeInvalidParameter",
+                "ErrCodeConflict",
+                "ErrCodeAlreadyLiked",
+                "ErrCodeNotLiked",
+                "ErrCodeStorageFailure",
+                "ErrCodeTransactionFailed",
+                "ErrCodeServiceUnavailable",
+                "ErrCodeInternalError",
+                "ErrCodeDatabaseError"
+            ]
+        },
+        "middleware.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/middleware.ErrorCode"
+                },
+                "details": {},
+                "message": {
+                    "type": "string"
+                },
+                "request_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "post.CreatePostRequestBody": {
+            "type": "object",
+            "required": [
+                "content",
+                "storage_type",
+                "visibility"
+            ],
+            "properties": {
+                "content": {
+                    "$ref": "#/definitions/post.PostContent"
+                },
+                "storage_type": {
+                    "$ref": "#/definitions/post.StorageType"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "visibility": {
+                    "$ref": "#/definitions/post.Visibility"
+                }
+            }
+        },
+        "post.Post": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "blob_id": {
+                    "type": "string"
+                },
+                "comment_count": {
+                    "type": "integer"
+                },
+                "content_media_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "content_text": {
+                    "type": "string"
+                },
+                "content_title": {
+                    "description": "Fields for database storage",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "like_count": {
+                    "type": "integer"
+                },
+                "seal_policy_id": {
+                    "type": "string"
+                },
+                "storage_type": {
+                    "$ref": "#/definitions/post.StorageType"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tx_digest": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "visibility": {
+                    "$ref": "#/definitions/post.Visibility"
+                }
+            }
+        },
+        "post.PostContent": {
+            "type": "object",
+            "properties": {
+                "ciphertext": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "encrypted": {
+                    "type": "boolean"
+                },
+                "media_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "nonce": {
+                    "type": "string"
+                },
+                "seal_policy_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "post.PostPage": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "posts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/post.Post"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "post.StorageType": {
+            "type": "string",
+            "enum": [
+                "db",
+                "walrus"
+            ],
+            "x-enum-comments": {
+                "StorageTypeDB": "Content stored in database",
+                "StorageTypeWalrus": "Content stored in Walrus"
+            },
+            "x-enum-varnames": [
+                "StorageTypeDB",
+                "StorageTypeWalrus"
+            ]
+        },
+        "post.Visibility": {
+            "type": "string",
+            "enum": [
+                "public",
+                "private"
+            ],
+            "x-enum-varnames": [
+                "VisibilityPublic",
+                "VisibilityPrivate"
+            ]
+        },
+        "profile.Profile": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "avatar_url": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "profile.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                }
+            }
+        },
+        "seal.DecryptionKey": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "seal.DecryptionKeyRequest": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Optional message signed by the user",
+                    "type": "string"
+                },
+                "policy_id": {
+                    "type": "string"
+                },
+                "requester": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
+        "upload.MediaFile": {
+            "type": "object",
+            "properties": {
+                "blob_id": {
+                    "description": "Only for Walrus storage",
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "url": {
+                    "description": "Server URL or Walrus aggregator URL",
+                    "type": "string"
+                }
+            }
+        },
+        "upload.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/upload.MediaFile"
+                    }
+                },
+                "storage_type": {
+                    "$ref": "#/definitions/post.StorageType"
+                },
+                "total_size": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "AuthSignature": {
+            "description": "Provide X-Sui-Signature along with X-Sui-Message, X-Sui-Timestamp, and X-Sui-Nonce headers generated via zkLogin.",
+            "type": "apiKey",
+            "name": "X-Sui-Signature",
+            "in": "header"
+        }
+    }
+}
