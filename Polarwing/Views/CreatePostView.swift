@@ -40,10 +40,10 @@ struct CreatePostView: View {
                                 .font(.headline)
                                 .padding()
                                 .background(Color.gray.opacity(0.1))
-                                .cornerRadius(12)
+                            .cornerRadius(12)
                             
                             // Caption input field
-                            TextField("Add caption...", text: $caption, axis: .vertical)
+                            TextField("", text: $caption, axis: .vertical)
                                 .textFieldStyle(.plain)
                                 .padding()
                                 .background(Color.gray.opacity(0.1))
@@ -95,14 +95,14 @@ struct CreatePostView: View {
             }
             .padding()
             .background(Color.black.ignoresSafeArea())
-            .navigationTitle("发帖")
+            .navigationTitle("New Post")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.black, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .preferredColorScheme(.dark)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
@@ -141,7 +141,7 @@ struct CreatePostView: View {
                             ProgressView()
                                 .scaleEffect(1.5)
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            Text("发布中...")
+                            Text("Publishing...")
                                 .foregroundColor(.white)
                                 .font(.headline)
                         }
@@ -151,9 +151,9 @@ struct CreatePostView: View {
                     }
                 }
             }
-            .alert("发布失败", isPresented: $showError) {
-                Button("确定", role: .cancel) {}
-            } message: {
+            .alert("Publishing Failed", isPresented: $showError) {
+                Button("OK", role: .cancel) {}
+            } message {
                 Text(errorMessage)
             }
         }
@@ -332,7 +332,7 @@ struct CreatePostWithImageView: View {
                         .cornerRadius(12)
                     
                     // 标题输入框
-                    TextField("标题", text: $postTitle)
+                    TextField("Title", text: $postTitle)
                         .textFieldStyle(.plain)
                         .font(.headline)
                         .padding()
@@ -340,7 +340,7 @@ struct CreatePostWithImageView: View {
                         .cornerRadius(12)
                     
                     // 内容输入框
-                    TextField("添加图片说明...", text: $caption, axis: .vertical)
+                    TextField("", text: $caption, axis: .vertical)
                         .textFieldStyle(.plain)
                         .padding()
                         .background(Color.gray.opacity(0.1))
@@ -350,14 +350,14 @@ struct CreatePostWithImageView: View {
             }
             .padding()
             .background(Color.black.ignoresSafeArea())
-            .navigationTitle("发帖")
+            .navigationTitle("New Post")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.black, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .preferredColorScheme(.dark)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
@@ -368,7 +368,7 @@ struct CreatePostWithImageView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle())
                         } else {
-                            Text("发布")
+                            Text("Post")
                                 .fontWeight(.semibold)
                         }
                     }
@@ -385,7 +385,7 @@ struct CreatePostWithImageView: View {
                             ProgressView()
                                 .scaleEffect(1.5)
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            Text("发布中...")
+                            Text("Publishing...")
                                 .foregroundColor(.white)
                                 .font(.headline)
                         }
@@ -395,8 +395,8 @@ struct CreatePostWithImageView: View {
                     }
                 }
             }
-            .alert("发布失败", isPresented: $showError) {
-                Button("确定", role: .cancel) {}
+            .alert("Publishing Failed", isPresented: $showError) {
+                Button("OK", role: .cancel) {}
             } message: {
                 Text(errorMessage)
             }
