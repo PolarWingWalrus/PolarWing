@@ -18,6 +18,13 @@ struct CameraView: View {
     @State private var showImagePreview = false
     @State private var showPhotoGallery = false
     var onDismiss: (() -> Void)? = nil
+    var onImageCaptured: ((UIImage) -> Void)? = nil
+    var mode: CameraMode = .continuous  // 默认为连续拍摄模式
+    
+    enum CameraMode {
+        case continuous  // Camera 标签模式：拍照后继续拍
+        case singleShot  // New Post 模式：拍照后确认
+    }
     
     // 计算UI元素的旋转角度
     private var rotationAngle: Angle {
@@ -41,6 +48,14 @@ struct CameraView: View {
             if !showImagePreview {
                 CameraPreview(session: cameraManager.session)
                     .ignoresSafeArea()
+                    .onAppear {
+                        // 确保相机会话正在运行
+                        if !cameraManager.session.isRunning {
+                            DispatchQueue.global(qos: .userInitiated).async {
+                                cameraManager.session.startRunning()
+                            }
+                        }
+                    }
                 
                 VStack {
                     // 顶部工具栏
@@ -110,7 +125,10 @@ struct CameraView: View {
                             cameraManager.capturePhoto { image in
                                 if let image = image {
                                     capturedImage = image
-                                    // 拍照后保持在相机预览页面
+                                    // 根据模式决定是否显示预览
+                                    if mode == .singleShot {
+                                        showImagePreview = true
+                                    }
                                 }
                             }
                         }) {
@@ -151,8 +169,14 @@ struct CameraView: View {
                         capturedImage = nil
                     },
                     onUse: {
-                        // TODO: 使用图片发帖
-                        dismiss()
+                        if let onImageCaptured = onImageCaptured {
+                            onImageCaptured(image)
+                        }
+                        if let onDismiss = onDismiss {
+                            onDismiss()
+                        } else {
+                            dismiss()
+                        }
                     }
                 )
             }
