@@ -14,6 +14,12 @@ struct PostCardView: View {
     @State private var isLoadingImage = false
     @State private var authorProfile: ProfileResponse?
     @State private var authorAvatarImage: UIImage?
+    @State private var imageOrientation: ImageOrientation = .portrait
+    
+    enum ImageOrientation {
+        case portrait   // 竖屏或正方形
+        case landscape  // 横屏
+    }
     
     // 点赞功能
     @State private var isLiked = false
@@ -52,11 +58,17 @@ struct PostCardView: View {
         return false
     }
     
-    // 根据内容动态计算高度比例
+    // 根据图片方向使用固定的宽高比
     var cardAspectRatio: CGFloat {
         if hasImage {
-            // 有图片时使用 3:4 比例
-            return 0.75
+            switch imageOrientation {
+            case .landscape:
+                // 横屏图片：宽度 / 高度 = 4:3 ≈ 1.33
+                return 1.33
+            case .portrait:
+                // 竖屏或正方形图片：宽度 / 高度 = 3:4 = 0.75
+                return 0.75
+            }
         } else {
             // 纯文本时使用更小的高度，根据标题长度动态调整
             let titleLength = displayTitle.count
@@ -71,51 +83,64 @@ struct PostCardView: View {
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .bottomLeading) {
-                if hasImage {
-                    // 有图片时显示图片或加载状态
-                    if let image = imageData {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                            .clipped()
-                    } else if isLoadingImage {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .overlay(
-                                ProgressView()
-                            )
+        VStack(alignment: .leading, spacing: 0) {
+            // 图片部分
+            GeometryReader { geometry in
+                ZStack(alignment: .center) {
+                    if hasImage {
+                        // 有图片时显示图片或加载状态
+                        if let image = imageData {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                                .clipped()
+                        } else if isLoadingImage {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.2))
+                                .overlay(
+                                    ProgressView()
+                                )
+                        } else {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.2))
+                        }
                     } else {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
+                        // 纯文本时使用渐变背景
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 172/255, green: 237/255, blue: 228/255).opacity(0.3),
+                                Color(red: 172/255, green: 237/255, blue: 228/255).opacity(0.6)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        
+                        // 纯文本时在图片区域显示标题
+                        VStack {
+                            Text(displayTitle)
+                                .font(.body)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.black.opacity(0.85))
+                                .lineLimit(4)
+                                .multilineTextAlignment(.leading)
+                                .padding(12)
+                            Spacer()
+                        }
                     }
-                    
-                    LinearGradient(
-                        gradient: Gradient(colors: [.clear, .black.opacity(0.7)]),
-                        startPoint: .center,
-                        endPoint: .bottom
-                    )
-                } else {
-                    // 纯文本时使用渐变背景
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(red: 172/255, green: 237/255, blue: 228/255).opacity(0.3),
-                            Color(red: 172/255, green: 237/255, blue: 228/255).opacity(0.6)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
                 }
-                
-                VStack(alignment: .leading, spacing: 4) {
+            }
+            .aspectRatio(cardAspectRatio, contentMode: .fit)
+            .cornerRadius(8)
+            
+            // 文字和点赞信息部分（显示在图片下方）
+            if hasImage {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(displayTitle)
-                        .font(hasImage ? .subheadline : .body)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundColor(hasImage ? .white : .black.opacity(0.85))
-                        .lineLimit(hasImage ? 2 : 4)
-                        .padding(.bottom, hasImage ? 0 : 4)
+                        .foregroundColor(.white)
+                        .lineLimit(2)
                     
                     HStack(spacing: 8) {
                         if showUsername {
@@ -130,31 +155,73 @@ struct PostCardView: View {
                                 } else {
                                     Image(systemName: post.userAvatar)
                                         .font(.caption2)
+                                        .foregroundColor(.white.opacity(0.7))
                                 }
                                 Text(displayUsername)
                                     .font(.caption2)
                                     .fontWeight(.medium)
+                                    .foregroundColor(.white.opacity(0.7))
                             }
                         }
+                        
+                        Spacer()
                         
                         Button(action: toggleLike) {
                             HStack(spacing: 4) {
                                 Image(systemName: isLiked ? "heart.fill" : "heart")
                                     .font(.caption2)
-                                    .foregroundColor(isLiked ? .red : (hasImage ? .white.opacity(0.9) : .black.opacity(0.6)))
+                                    .foregroundColor(isLiked ? .red : .white.opacity(0.7))
                                 Text("\(likeCount)")
                                     .font(.caption2)
-                                    .foregroundColor(hasImage ? .white.opacity(0.9) : .black.opacity(0.6))
+                                    .foregroundColor(.white.opacity(0.7))
                             }
                         }
                         .disabled(isLiking || isLiked)
                     }
                 }
-                .padding(hasImage ? 8 : 12)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+            } else {
+                // 纯文本卡片的底部信息
+                HStack(spacing: 8) {
+                    if showUsername {
+                        HStack(spacing: 4) {
+                            if let avatarImage = authorAvatarImage {
+                                Image(uiImage: avatarImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 16, height: 16)
+                                    .clipShape(Circle())
+                            } else {
+                                Image(systemName: post.userAvatar)
+                                    .font(.caption2)
+                                    .foregroundColor(.black.opacity(0.6))
+                            }
+                            Text(displayUsername)
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundColor(.black.opacity(0.6))
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: toggleLike) {
+                        HStack(spacing: 4) {
+                            Image(systemName: isLiked ? "heart.fill" : "heart")
+                                .font(.caption2)
+                                .foregroundColor(isLiked ? .red : .black.opacity(0.6))
+                            Text("\(likeCount)")
+                                .font(.caption2)
+                                .foregroundColor(.black.opacity(0.6))
+                        }
+                    }
+                    .disabled(isLiking || isLiked)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
         }
-        .aspectRatio(cardAspectRatio, contentMode: .fit)
-        .cornerRadius(8)
         .onAppear {
             if hasImage {
                 loadImage()
@@ -186,6 +253,7 @@ struct PostCardView: View {
             // 先尝试从缓存加载
             if let cachedImage = CacheManager.shared.loadImage(for: urlString) {
                 self.imageData = cachedImage
+                self.imageOrientation = detectImageOrientation(cachedImage)
                 return
             }
             
@@ -195,8 +263,12 @@ struct PostCardView: View {
                 do {
                     let (data, _) = try await URLSession.shared.data(from: url)
                     if let image = UIImage(data: data) {
+                        // 检测图片方向
+                        let orientation = detectImageOrientation(image)
+                        
                         await MainActor.run {
                             self.imageData = image
+                            self.imageOrientation = orientation
                             self.isLoadingImage = false
                             // 缓存图片
                             CacheManager.shared.saveImage(image, for: urlString)
@@ -263,6 +335,20 @@ struct PostCardView: View {
                 // 静默失败，使用默认显示
                 print("⚠️ 获取作者信息失败 (\(post.author)): \(error.localizedDescription)")
             }
+        }
+    }
+    
+    // 检测图片方向
+    private func detectImageOrientation(_ image: UIImage) -> ImageOrientation {
+        let width = image.size.width
+        let height = image.size.height
+        
+        // 横屏：宽度明显大于高度（宽高比 > 1.2）
+        if width > height * 1.2 {
+            return .landscape
+        } else {
+            // 竖屏或正方形（包括宽高比 <= 1.2 的情况）
+            return .portrait
         }
     }
     
