@@ -19,6 +19,22 @@ struct CameraView: View {
     @State private var showPhotoGallery = false
     var onDismiss: (() -> Void)? = nil
     
+    // 计算UI元素的旋转角度
+    private var rotationAngle: Angle {
+        switch cameraManager.deviceOrientation {
+        case .portrait:
+            return .degrees(0)
+        case .portraitUpsideDown:
+            return .degrees(180)
+        case .landscapeLeft:
+            return .degrees(90)
+        case .landscapeRight:
+            return .degrees(-90)
+        default:
+            return .degrees(0)
+        }
+    }
+    
     var body: some View {
         ZStack {
             // 相机预览
@@ -85,6 +101,8 @@ struct CameraView: View {
                                     .frame(width: 50, height: 50)
                             }
                         }
+                        .rotationEffect(rotationAngle)
+                        .animation(.easeInOut(duration: 0.3), value: rotationAngle)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         
                         // 拍照按钮
@@ -117,6 +135,8 @@ struct CameraView: View {
                                 .foregroundColor(.white)
                                 .frame(width: 50, height: 50)
                         }
+                        .rotationEffect(rotationAngle)
+                        .animation(.easeInOut(duration: 0.3), value: rotationAngle)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     .padding(.horizontal, 30)
@@ -243,12 +263,12 @@ class CameraManager: NSObject, ObservableObject {
     @Published var showPermissionAlert = false
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
     @Published var lastPhotoThumbnail: UIImage?
+    @Published var deviceOrientation: UIDeviceOrientation = .portrait  // 改为 @Published 以便 UI 响应
     
     private var photoOutput = AVCapturePhotoOutput()
     private var currentCamera: AVCaptureDevice?
     private var captureCompletion: ((UIImage?) -> Void)?
     private let motionManager = CMMotionManager()
-    private var deviceOrientation: UIDeviceOrientation = .portrait
     
     override init() {
         super.init()
@@ -272,19 +292,28 @@ class CameraManager: NSObject, ObservableObject {
             guard let self = self, let data = data else { return }
             
             let acceleration = data.acceleration
+            let threshold = 0.5  // 设置阈值避免抖动
             
             // 根据加速度计数据判断设备方向
-            if abs(acceleration.y) > abs(acceleration.x) {
+            if abs(acceleration.y) > abs(acceleration.x) && abs(acceleration.y) > threshold {
                 if acceleration.y > 0 {
-                    self.deviceOrientation = .portraitUpsideDown
+                    if self.deviceOrientation != .portraitUpsideDown {
+                        self.deviceOrientation = .portraitUpsideDown
+                    }
                 } else {
-                    self.deviceOrientation = .portrait
+                    if self.deviceOrientation != .portrait {
+                        self.deviceOrientation = .portrait
+                    }
                 }
-            } else {
+            } else if abs(acceleration.x) > threshold {
                 if acceleration.x > 0 {
-                    self.deviceOrientation = .landscapeRight
+                    if self.deviceOrientation != .landscapeRight {
+                        self.deviceOrientation = .landscapeRight
+                    }
                 } else {
-                    self.deviceOrientation = .landscapeLeft
+                    if self.deviceOrientation != .landscapeLeft {
+                        self.deviceOrientation = .landscapeLeft
+                    }
                 }
             }
         }
