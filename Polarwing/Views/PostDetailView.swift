@@ -17,6 +17,8 @@ struct PostDetailView: View {
     // 隐藏的测试功能
     @State private var avatarTapCount = 0
     @State private var showDebugInfo = false
+    @State private var imageTapCount = 0
+    @State private var showBlobInfo = false
     
     // 点赞功能
     @State private var isLiked = false
@@ -67,6 +69,20 @@ struct PostDetailView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: .infinity)
+                        .onTapGesture {
+                            imageTapCount += 1
+                            if imageTapCount >= 3 {
+                                showBlobInfo = true
+                                imageTapCount = 0
+                            }
+                            
+                            // 2秒后重置计数
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                if imageTapCount > 0 {
+                                    imageTapCount = 0
+                                }
+                            }
+                        }
                 } else if isLoadingImage {
                     Rectangle()
                         .fill(Color.gray.opacity(0.2))
@@ -167,15 +183,22 @@ struct PostDetailView: View {
                         .padding(.vertical, 8)
                     
                     // Comments section title
-                    Text("Comments")
-                        .font(.headline)
-                        .padding(.bottom, 8)
+                    HStack {
+                        Text("Comments")
+                            .font(.headline)
+                        
+                        if isLoadingComments {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .padding(.leading, 8)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.bottom, 8)
                     
                     // 评论列表
-                    if isLoadingComments && comments.isEmpty {
-                        ProgressView()
-                            .padding()
-                    } else if comments.isEmpty {
+                    if comments.isEmpty && !isLoadingComments {
                         Text("No comments yet. Be the first to comment!")
                             .font(.subheadline)
                             .foregroundColor(.gray)
@@ -228,6 +251,10 @@ struct PostDetailView: View {
             isLiked = likeManager.isLiked(postId: post.id)
             likeCount = likeManager.getLikeCount(postId: post.id, defaultCount: post.likeCount)
         }
+        .refreshable {
+            // 下拉刷新时重新加载评论
+            await refreshComments()
+        }
         .alert("🔍 Debug Info", isPresented: $showDebugInfo) {
             Button("Copy Post ID", role: .none) {
                 UIPasteboard.general.string = post.id
@@ -246,6 +273,32 @@ struct PostDetailView: View {
                     Text("\n🖼️ Media URL:\n\(mediaUrls.joined(separator: "\n"))")
                 }
             }
+        }
+        .alert("🗂️ Blob Info", isPresented: $showBlobInfo) {
+            if let blobId = post.blobId, !blobId.isEmpty {
+                Button("Copy Blob ID", role: .none) {
+                    UIPasteboard.general.string = blobId
+                }
+                Button("Open in Walruscan", role: .none) {
+                    openWalruscan(blobId: blobId)
+                }
+                Button("Close", role: .cancel) {}
+            } else {
+                Button("Close", role: .cancel) {}
+            }
+        } message: {
+            if let blobId = post.blobId, !blobId.isEmpty {
+                Text("🗂️ Blob ID:\n\(blobId)\n\nStorage Type: \(post.storageType)")
+            } else {
+                Text("📦 Storage Type: \(post.storageType)\n\nNo Blob ID available (content stored in database)")
+            }
+        }
+    }
+    
+    private func openWalruscan(blobId: String) {
+        let urlString = "https://walruscan.com/testnet/blob/\(blobId)"
+        if let url = URL(string: urlString) {
+            UIApplication.shared.open(url)
         }
     }
     
@@ -436,7 +489,10 @@ struct PostDetailView: View {
             return
         }
         
-        isLoadingComments = true
+        // 只在没有评论时才显示加载状态
+        if comments.isEmpty {
+            isLoadingComments = true
+        }
         
         Task {
             do {
@@ -450,6 +506,7 @@ struct PostDetailView: View {
                 
                 await MainActor.run {
                     self.comments = commentsPage.comments
+                    self.commentCount = commentsPage.total
                     self.isLoadingComments = false
                     print("✅ 成功加载 \(commentsPage.comments.count) 条评论")
                 }
@@ -459,6 +516,30 @@ struct PostDetailView: View {
                     print("❌ 加载评论失败: \(error.localizedDescription)")
                 }
             }
+        }
+    }
+    
+    private func refreshComments() async {
+        guard let suiAddress = UserDefaults.standard.string(forKey: "suiAddress") else {
+            return
+        }
+        
+        do {
+            let commentsPage = try await APIService.shared.getComments(
+                postId: post.id,
+                page: 1,
+                pageSize: 50,
+                includeContent: true,
+                suiAddress: suiAddress
+            )
+            
+            await MainActor.run {
+                self.comments = commentsPage.comments
+                self.commentCount = commentsPage.total
+                print("✅ 刷新成功: 加载 \(commentsPage.comments.count) 条评论")
+            }
+        } catch {
+            print("❌ 刷新评论失败: \(error.localizedDescription)")
         }
     }
     
