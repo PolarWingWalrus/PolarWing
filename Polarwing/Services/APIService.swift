@@ -25,6 +25,7 @@ struct APIError: Codable {
         case unauthorized = "UNAUTHORIZED"
         case badRequest = "BAD_REQUEST"
         case internalError = "INTERNAL_ERROR"
+        case alreadyLiked = "ALREADY_LIKED"
         case unknown = "UNKNOWN"
     }
 }
@@ -655,6 +656,153 @@ class APIService {
                 userInfo: [NSLocalizedDescriptionKey: "Unexpected status code: \(httpResponse.statusCode)"]
             )
         }
+    }
+    
+    // MARK: - Like API
+    func likePost(
+        postId: String,
+        suiAddress: String,
+        publicKey: String,
+        signature: String,
+        action: String = "like",
+        timestamp: Int,
+        nonce: Int
+    ) async throws -> LikeCountResponse {
+        let url = URL(string: "\(baseURL)/posts/\(postId)/like")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        // Headers
+        request.setValue("application/json", forHTTPHeaderField: "accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(suiAddress, forHTTPHeaderField: "X-Sui-Address")
+        request.setValue(publicKey, forHTTPHeaderField: "X-Sui-Public-Key")
+        request.setValue(signature, forHTTPHeaderField: "X-Sui-Signature")
+        request.setValue(action, forHTTPHeaderField: "X-Sui-Action")
+        request.setValue("\(timestamp)", forHTTPHeaderField: "X-Sui-Timestamp")
+        request.setValue("\(nonce)", forHTTPHeaderField: "X-Sui-Nonce")
+        
+        print("📤 点赞帖子: \(url.absoluteString)")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+        
+        print("📥 收到响应 - 状态码: \(httpResponse.statusCode)")
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📦 响应体: \(responseString)")
+        }
+        
+        switch httpResponse.statusCode {
+        case 200:
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(LikeCountResponse.self, from: data)
+            print("✅ 成功点赞，当前点赞数: \(response.likeCount)")
+            return response
+            
+        case 400, 401, 403, 409, 500:
+            let decoder = JSONDecoder()
+            let apiError = try decoder.decode(APIError.self, from: data)
+            print("❌ API 错误: \(apiError)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey: apiError.message,
+                    "code": apiError.code.rawValue,
+                    "details": apiError.details ?? ""
+                ]
+            )
+            
+        default:
+            print("⚠️ 未预期的状态码: \(httpResponse.statusCode)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Unexpected status code: \(httpResponse.statusCode)"]
+            )
+        }
+    }
+    
+    // MARK: - Unlike API
+    func unlikePost(
+        postId: String,
+        suiAddress: String,
+        publicKey: String,
+        signature: String,
+        action: String = "unlike",
+        timestamp: Int,
+        nonce: Int
+    ) async throws -> LikeCountResponse {
+        let url = URL(string: "\(baseURL)/posts/\(postId)/like")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        
+        // Headers
+        request.setValue("application/json", forHTTPHeaderField: "accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(suiAddress, forHTTPHeaderField: "X-Sui-Address")
+        request.setValue(publicKey, forHTTPHeaderField: "X-Sui-Public-Key")
+        request.setValue(signature, forHTTPHeaderField: "X-Sui-Signature")
+        request.setValue(action, forHTTPHeaderField: "X-Sui-Action")
+        request.setValue("\(timestamp)", forHTTPHeaderField: "X-Sui-Timestamp")
+        request.setValue("\(nonce)", forHTTPHeaderField: "X-Sui-Nonce")
+        
+        print("📤 取消点赞帖子: \(url.absoluteString)")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+        
+        print("📥 收到响应 - 状态码: \(httpResponse.statusCode)")
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📦 响应体: \(responseString)")
+        }
+        
+        switch httpResponse.statusCode {
+        case 200:
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(LikeCountResponse.self, from: data)
+            print("✅ 成功取消点赞，当前点赞数: \(response.likeCount)")
+            return response
+            
+        case 400, 401, 404, 500:
+            let decoder = JSONDecoder()
+            let apiError = try decoder.decode(APIError.self, from: data)
+            print("❌ API 错误: \(apiError)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey: apiError.message,
+                    "code": apiError.code.rawValue,
+                    "details": apiError.details ?? ""
+                ]
+            )
+            
+        default:
+            print("⚠️ 未预期的状态码: \(httpResponse.statusCode)")
+            throw NSError(
+                domain: "APIService",
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Unexpected status code: \(httpResponse.statusCode)"]
+            )
+        }
+    }
+}
+
+// MARK: - Like Count Response
+struct LikeCountResponse: Codable {
+    let likeCount: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case likeCount = "like_count"
     }
 }
 

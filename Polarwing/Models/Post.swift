@@ -34,6 +34,9 @@ struct Post: Identifiable, Codable {
     var authorNickname: String?
     var authorAvatarUrl: String?
     
+    // Like status (not from API, managed locally)
+    var isLiked: Bool = false
+    
     // UI helper properties
     var userId: String { author }
     var username: String { 

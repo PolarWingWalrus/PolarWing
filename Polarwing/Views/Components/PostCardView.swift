@@ -15,9 +15,18 @@ struct PostCardView: View {
     @State private var authorProfile: ProfileResponse?
     @State private var authorAvatarImage: UIImage?
     
+    // 点赞功能
+    @State private var isLiked = false
+    @State private var likeCount: Int
+    @State private var isLiking = false
+    @StateObject private var p256Signer = P256Signer.shared
+    @StateObject private var likeManager = LikeManager.shared
+    
     init(post: Post, showUsername: Bool = true) {
         self.post = post
         self.showUsername = showUsername
+        _likeCount = State(initialValue: post.likeCount)
+        _isLiked = State(initialValue: post.isLiked)
     }
     
     var displayTitle: String {
@@ -128,14 +137,18 @@ struct PostCardView: View {
                             }
                         }
                         
-                        HStack(spacing: 4) {
-                            Image(systemName: "heart.fill")
-                                .font(.caption2)
-                            Text("\(post.likes)")
-                                .font(.caption2)
+                        Button(action: toggleLike) {
+                            HStack(spacing: 4) {
+                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                    .font(.caption2)
+                                    .foregroundColor(isLiked ? .red : (hasImage ? .white.opacity(0.9) : .black.opacity(0.6)))
+                                Text("\(likeCount)")
+                                    .font(.caption2)
+                                    .foregroundColor(hasImage ? .white.opacity(0.9) : .black.opacity(0.6))
+                            }
                         }
+                        .disabled(isLiking || isLiked)
                     }
-                    .foregroundColor(hasImage ? .white.opacity(0.9) : .black.opacity(0.6))
                 }
                 .padding(hasImage ? 8 : 12)
             }
@@ -147,6 +160,16 @@ struct PostCardView: View {
                 loadImage()
             }
             loadAuthorProfile()
+            // 从LikeManager加载点赞状态
+            isLiked = likeManager.isLiked(postId: post.id)
+            likeCount = likeManager.getLikeCount(postId: post.id, defaultCount: post.likeCount)
+        }
+        .onReceive(likeManager.$likedPosts) { likedPosts in
+            // 监听点赞状态变化
+            isLiked = likedPosts[post.id] != nil
+            if let count = likedPosts[post.id] {
+                likeCount = count
+            }
         }
     }
     
@@ -239,6 +262,75 @@ struct PostCardView: View {
             } catch {
                 // 静默失败，使用默认显示
                 print("⚠️ 获取作者信息失败 (\(post.author)): \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func toggleLike() {
+        guard !isLiking,
+              !isLiked, // 已点赞则不允许操作(取消点赞功能暂未实现)
+              let suiAddress = UserDefaults.standard.string(forKey: "suiAddress"),
+              let publicKey = p256Signer.publicKey else {
+            return
+        }
+        
+        isLiking = true
+        
+        // 创建签名数据
+        let action = "like"
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let nonce = Int.random(in: 1...Int.max)
+        let message = "\(action)\(timestamp)\(nonce)"
+        
+        // 签名
+        p256Signer.signMessage(message) { signResult in
+            switch signResult {
+            case .success(let signatureResult):
+                Task {
+                    do {
+                        // 点赞
+                        let response = try await APIService.shared.likePost(
+                            postId: post.id,
+                            suiAddress: suiAddress,
+                            publicKey: publicKey.base64EncodedString(),
+                            signature: signatureResult.signature.base64EncodedString(),
+                            action: action,
+                            timestamp: timestamp,
+                            nonce: nonce
+                        )
+                        
+                        await MainActor.run {
+                            self.isLiked = true
+                            self.likeCount = response.likeCount
+                            self.isLiking = false
+                            // 更新全局点赞状态
+                            likeManager.updateLike(postId: post.id, isLiked: true, likeCount: response.likeCount)
+                        }
+                    } catch {
+                        await MainActor.run {
+                            self.isLiking = false
+                            
+                            // 检查是否是已点赞错误
+                            let nsError = error as NSError
+                            if nsError.domain == "APIService" && nsError.code == 409 {
+                                // 已点赞，更新UI状态
+                                print("ℹ️ 用户已点赞此帖子，更新UI状态")
+                                self.isLiked = true
+                                // 增加点赞数（如果本地还没增加）
+                                if !likeManager.isLiked(postId: post.id) {
+                                    self.likeCount += 1
+                                }
+                                likeManager.updateLike(postId: post.id, isLiked: true, likeCount: self.likeCount)
+                            } else {
+                                print("❌ 点赞操作失败: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+                }
+                
+            case .failure(let error):
+                isLiking = false
+                print("❌ 签名失败: \(error.localizedDescription)")
             }
         }
     }
