@@ -300,6 +300,7 @@ struct P256SignerDebugView: View {
     @State private var showImportSheet = false
     @State private var importPrivateKey = ""
     @State private var exportedPrivateKey = ""
+    @State private var showPhotoSignatureTest = false
     
     var body: some View {
         NavigationView {
@@ -428,6 +429,29 @@ struct P256SignerDebugView: View {
                     Divider()
                         .padding(.vertical)
                     
+                    // 照片签名测试部分
+                    VStack(spacing: 12) {
+                        Text("Photo Signature")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        Button(action: { showPhotoSignatureTest = true }) {
+                            HStack {
+                                Image(systemName: "photo.badge.checkmark")
+                                Text("Test Photo Signature")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                    }
+                    
+                    Divider()
+                        .padding(.vertical)
+                    
                     // 密钥管理部分
                     VStack(spacing: 12) {
                         Text("Key Management")
@@ -473,6 +497,19 @@ struct P256SignerDebugView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                         }
+                        
+                        // Return to Onboarding
+                        Button(action: returnToOnboarding) {
+                            HStack {
+                                Image(systemName: "arrow.uturn.backward")
+                                Text("Return to Onboarding")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
                     }
                 }
                 .padding()
@@ -494,6 +531,9 @@ struct P256SignerDebugView: View {
             }
             .sheet(isPresented: $showImportSheet) {
                 ImportPrivateKeyView(importText: $importPrivateKey, onImport: importPrivateKeyAction)
+            }
+            .sheet(isPresented: $showPhotoSignatureTest) {
+                PhotoSignatureTestView()
             }
         }
     }
@@ -577,6 +617,24 @@ struct P256SignerDebugView: View {
                 print("❌ 私钥导入失败: \(error.localizedDescription)")
             }
         }
+    }
+    
+    private func returnToOnboarding() {
+        // 清除所有用户数据
+        UserDefaults.standard.removeObject(forKey: "username")
+        UserDefaults.standard.removeObject(forKey: "suiAddress")
+        UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+        
+        // 清除缓存
+        CacheManager.shared.clearCache()
+        
+        print("🔄 已清除所有用户数据，返回 Onboarding")
+        
+        // 关闭当前调试页面并触发应用重启到 Onboarding
+        dismiss()
+        
+        // 发送通知让应用返回到 Onboarding
+        NotificationCenter.default.post(name: NSNotification.Name("ReturnToOnboarding"), object: nil)
     }
 }
 

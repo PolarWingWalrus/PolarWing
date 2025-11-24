@@ -545,10 +545,34 @@ extension CameraManager: AVCapturePhotoCaptureDelegate {
         let uiImageOrientation = convertToUIImageOrientation(photoOrientation)
         let image = UIImage(cgImage: cgImage, scale: 1.0, orientation: uiImageOrientation)
         
-        // 保存到相册时保留方向信息
-        savePhotoToLibraryWithOrientation(imageData: imageData, orientation: photoOrientation)
-        
-        captureCompletion?(image)
+        // 对照片进行签名
+        PhotoSignatureService.shared.signPhoto(image) { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let signedResult):
+                print("✅ 照片签名成功")
+                print(signedResult.metadata.description)
+                
+                // 保存签名后的照片到相册
+                self.saveSignedPhotoToLibrary(signedImageData: signedResult.signedImageData, orientation: photoOrientation)
+                
+                // 返回签名后的照片
+                if let signedImage = signedResult.toUIImage() {
+                    self.captureCompletion?(signedImage)
+                } else {
+                    self.captureCompletion?(image)
+                }
+                
+            case .failure(let error):
+                print("⚠️ 照片签名失败: \(error.localizedDescription)")
+                print("保存未签名的照片")
+                
+                // 如果签名失败，保存原始照片
+                self.savePhotoToLibraryWithOrientation(imageData: imageData, orientation: photoOrientation)
+                self.captureCompletion?(image)
+            }
+        }
     }
     
     // 转换 CGImagePropertyOrientation 为 UIImage.Orientation
@@ -562,6 +586,46 @@ extension CameraManager: AVCapturePhotoCaptureDelegate {
         case .downMirrored: return .downMirrored
         case .leftMirrored: return .leftMirrored
         case .rightMirrored: return .rightMirrored
+        }
+    }
+    
+    // 保存签名后的照片到相册
+    private func saveSignedPhotoToLibrary(signedImageData: Data, orientation: CGImagePropertyOrientation) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized || status == .limited else {
+                print("⚠️ 没有相册写入权限")
+                return
+            }
+            
+            // 获取或创建 Polarwing 专属相册
+            self.getOrCreatePolarwingAlbum { collection in
+                guard let collection = collection else {
+                    print("❌ 无法创建相册")
+                    return
+                }
+                
+                PHPhotoLibrary.shared().performChanges({
+                    let creationRequest = PHAssetCreationRequest.forAsset()
+                    creationRequest.addResource(with: .photo, data: signedImageData, options: nil)
+                    
+                    if let assetPlaceholder = creationRequest.placeholderForCreatedAsset,
+                       let albumChangeRequest = PHAssetCollectionChangeRequest(for: collection) {
+                        albumChangeRequest.addAssets([assetPlaceholder] as NSArray)
+                    }
+                }) { success, error in
+                    if success {
+                        print("✅ 已签名照片已保存到 Polarwing 相册")
+                        // 更新缩略图
+                        if let image = UIImage(data: signedImageData) {
+                            DispatchQueue.main.async {
+                                self.lastPhotoThumbnail = image
+                            }
+                        }
+                    } else if let error = error {
+                        print("❌ 保存到相册失败: \(error.localizedDescription)")
+                    }
+                }
+            }
         }
     }
     

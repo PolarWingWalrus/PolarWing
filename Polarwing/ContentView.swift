@@ -13,6 +13,10 @@ struct ContentView: View {
     var body: some View {
         if isOnboardingComplete {
             MainTabView()
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ReturnToOnboarding"))) { _ in
+                    // 返回到 Onboarding 页面
+                    isOnboardingComplete = false
+                }
         } else {
             OnboardingView(isOnboardingComplete: $isOnboardingComplete)
         }
